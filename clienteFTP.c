@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
@@ -41,10 +42,21 @@ char *clear_string(char *str, int size) {
 }
 
 int main (int argc, char **argv) {
-    if (argc < 5) {
+    if (argc < 4) {
         logexit("missing params");
     }
 
+    char *host = argv[1];
+    int port = atoi(argv[2]);
+    char *file_name = argv[3];
+    int buffer_size = atoi(argv[4]);
+
+    // get start time
+    struct timeval start;
+    struct timeval end;
+    gettimeofday(&start, NULL);
+
+    // create and setup connection
     int s = socket(AF_INET, SOCK_STREAM, 0);
 
     if (s == -1) {
@@ -52,11 +64,11 @@ int main (int argc, char **argv) {
     }
 
     struct in_addr addr;
-    inet_aton(argv[1], &addr);
+    inet_aton(host, &addr);
 
     struct sockaddr_in dst = {
         .sin_family = AF_INET,
-        .sin_port = htons(atoi(argv[2])),
+        .sin_port = htons(port),
         .sin_addr = addr
     };
 
@@ -66,35 +78,35 @@ int main (int argc, char **argv) {
         logexit("connect");
     }
 
+    // sends file name
+    send(s, &file_name, strlen(file_name), 0);
+
     // define temporizador de 15 segundos
-    struct timeval timeout;
-    timeout.tv_sec = 15;
-    timeout.tv_usec = 0;
-
-    setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
-
-    char buffer[BUFSZ];
-    int string_size = strlen(argv[3]);
-    uint32_t string_size_network = htonl(string_size);
-    int ceasars_cypher_key = atoi(argv[4]);
-    uint32_t ceasars_cypher_key_network = htonl(ceasars_cypher_key);
+    // struct timeval timeout;
+    // timeout.tv_sec = 15;
+    // timeout.tv_usec = 0;
+    // setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
+    // int string_size = strlen(argv[3]);
+    // uint32_t string_size_network = htonl(string_size);
+    // int ceasars_cypher_key = atoi(argv[4]);
+    // uint32_t ceasars_cypher_key_network = htonl(ceasars_cypher_key);
 
     // envia o tamanho da mensagem para o servidor
-    send(s, &string_size_network, 4, 0);
+    // send(s, &string_size_network, 4, 0);
 
     // codifica e envia a mensagem para o servidor
-    ceaser(argv[3], string_size, ceasars_cypher_key);
-    send(s, argv[3], string_size, 0);
+    // ceaser(argv[3], string_size, ceasars_cypher_key);
+    // send(s, argv[3], string_size, 0);
 
     // envia o valor de X para o servidor
-    send(s, &ceasars_cypher_key_network, 4, 0);
+    // send(s, &ceasars_cypher_key_network, 4, 0);
 
     // recebe e imprime mensagem decodificada
-    if (recv(s, buffer, string_size, MSG_WAITALL) == string_size) {
-        buffer[string_size] = '\0';
-        printf("%s\n", buffer);
-        fflush(stdout);
-    }
+    // if (recv(s, buffer, string_size, MSG_WAITALL) == string_size) {
+    //     buffer[string_size] = '\0';
+    //     printf("%s\n", buffer);
+    //     fflush(stdout);
+    // }
 
     close(s);
     exit(EXIT_SUCCESS);
