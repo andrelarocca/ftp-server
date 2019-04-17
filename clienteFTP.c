@@ -56,6 +56,8 @@ int main (int argc, char **argv) {
     struct timeval end;
     gettimeofday(&start, NULL);
 
+    char buffer[buffer_size];
+
     // create and setup connection
     int s = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -79,34 +81,14 @@ int main (int argc, char **argv) {
     }
 
     // sends file name
-    send(s, &file_name, strlen(file_name), 0);
+    send(s, file_name, strlen(file_name), 0);
 
-    // define temporizador de 15 segundos
-    // struct timeval timeout;
-    // timeout.tv_sec = 15;
-    // timeout.tv_usec = 0;
-    // setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
-    // int string_size = strlen(argv[3]);
-    // uint32_t string_size_network = htonl(string_size);
-    // int ceasars_cypher_key = atoi(argv[4]);
-    // uint32_t ceasars_cypher_key_network = htonl(ceasars_cypher_key);
-
-    // envia o tamanho da mensagem para o servidor
-    // send(s, &string_size_network, 4, 0);
-
-    // codifica e envia a mensagem para o servidor
-    // ceaser(argv[3], string_size, ceasars_cypher_key);
-    // send(s, argv[3], string_size, 0);
-
-    // envia o valor de X para o servidor
-    // send(s, &ceasars_cypher_key_network, 4, 0);
-
-    // recebe e imprime mensagem decodificada
-    // if (recv(s, buffer, string_size, MSG_WAITALL) == string_size) {
-    //     buffer[string_size] = '\0';
-    //     printf("%s\n", buffer);
-    //     fflush(stdout);
-    // }
+    while (recv(s, buffer, buffer_size, MSG_WAITALL) == buffer_size) {
+        printf("Received %d bytes of data", buffer_size);
+        buffer[buffer_size] = '\0';
+        printf("%s\n", buffer);
+        fflush(stdout);
+    }
 
     close(s);
     exit(EXIT_SUCCESS);
