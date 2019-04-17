@@ -19,62 +19,17 @@ void logexit (const char *str) {
     exit(EXIT_FAILURE);
 }
 
-void unceaser (char *str, int size, int key) {
-    for (int i = 0; i < size; i++) {
-        str[i] = str[i] - key;
-
-        if (str[i] < 97) {
-            str[i] = str[i] + 26;
-        }
-    }
-}
-
-void *client_thread (void *param) {
-	struct conn_data *data = param;
-	int c = *(int*)param;
-
-    // define temporizador de 15 segundos
-    struct timeval timeout;
-    timeout.tv_sec = 15;
-    timeout.tv_usec = 0;
-
-    setsockopt(c, SOL_SOCKET, SO_RCVTIMEO, (char*) &timeout, sizeof(timeout));
-
-    char buffer[BUFSZ];
-    char message[BUFSZ];
-
-    // tamanho da mensagem recebido
-    if (recv(c, buffer, 4, MSG_WAITALL) == 4) {
-        uint32_t string_size = ntohl(*(uint32_t *)buffer);
-
-        // recebe mensagem do cliente
-        if (recv(c, message, string_size, MSG_WAITALL) == string_size) {
-
-            // recebe mensagem codificada
-            if (recv(c, buffer, 4, MSG_WAITALL) == 4) {
-                uint32_t ceasars_cypher_key = ntohl(*(uint32_t *)buffer);
-
-                // decodifica mensagem e envia de volta ao cliente
-                unceaser(message, string_size, ceasars_cypher_key);
-                send(c, message, string_size, 0);
-
-                // imprime a mensagem na saída padrão
-                message[string_size] = '\0';
-                printf("%s\n", message);
-                fflush(stdout);
-            }
-        }
-    }
-
-    // termina a conexão com o cliente
-	close(c);
-	pthread_exit(EXIT_SUCCESS);
-}
-
 int main (int argc, char **argv) {
-    if (argc < 2) {
-        logexit("missing port param");
+    if (argc < 3) {
+        logexit("missing params");
     }
+
+    int port = atoi(argv[1]);
+    int buffer_size = atoi(argv[2]);
+
+    char buffer[buffer_size];
+    char file_name[BUFSZ];
+    FILE *file;
 
     int s = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -85,7 +40,7 @@ int main (int argc, char **argv) {
 
         struct sockaddr_in client, dst = {
             .sin_family = AF_INET,
-            .sin_port = htons(atoi(argv[1])),
+            .sin_port = htons(port),
             .sin_addr = addr
         };
 
@@ -94,20 +49,27 @@ int main (int argc, char **argv) {
         if (bind(s, sa_dst, sizeof(dst)) >= 0) {
             int c;
 
-            listen(s, 5);
+            listen(s, 1);
             socklen_t client_length = sizeof(client);
 
-            // a combinacao ctrl+c termina a execucao
-            // cada iteracao do while representa uma nova conexao de cliente
-            while ((c = accept(s, (struct sockaddr*) &client,  &client_length)) >= 0) {
-                // cria a thread para executar conexão de cliente
-                pthread_t tid;
-                pthread_create(&tid, NULL, client_thread, &c);
+            if ((c = accept(s, (struct sockaddr*) &client,  &client_length)) >= 0) {
+                if (recv(c, file_name, BUFSZ, MSG_WAITALL) > 0) {
+                    file = fopen(file_name, "r");
+
+                    if (file == NULL) {
+                        logexit("file");
+                    }
+
+                    while (fread(buffer, buffer_size, 1, file) > 0) {
+                        send(c, buffer, buffer_size, 0);
+                    }
+                }
             }
         }
     }
 
     // termina o servidor
     close(s);
+    fclose(file);
     exit(EXIT_SUCCESS);
 }
