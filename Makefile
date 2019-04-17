@@ -1,8 +1,3 @@
 all:
-	gcc -pthread servidorFTP.c -o servidor
-	gcc -pthread clienteFTP.c -o cliente
-
-run:
-	gcc -pthread servidorFTP.c -o servidor
-	gcc -pthread clienteFTP.c -o cliente
-	./servidor
+	gcc servidorFTP.c -o servidor
+	gcc clienteFTP.c -o cliente
